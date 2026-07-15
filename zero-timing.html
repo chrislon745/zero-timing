@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zero Timing</title>
+<style>
+  :root {
+    --bg: #0b0d12;
+    --panel: #14171f;
+    --accent: #5ee6a8;
+    --accent2: #ff5d6c;
+    --text: #e8ecf1;
+    --muted: #7b8494;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: radial-gradient(ellipse at 50% 0%, #1a1f2b 0%, var(--bg) 60%);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    padding: 40px 16px;
+  }
+  .pageLayout {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 30px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  .mainColumn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+  }
+  #legacyPanel {
+    background: var(--panel);
+    border-radius: 14px;
+    padding: 20px 24px;
+    width: 200px;
+    flex-shrink: 0;
+  }
+  #legacyPanel h2 {
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin: 0 0 4px 0;
+  }
+  #legacyPanel .legacyVersion {
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  #legacyPanel table { width: 100%; border-collapse: collapse; font-family: 'Consolas', monospace; }
+  #legacyPanel td { padding: 5px 0; font-size: 0.85rem; }
+  #legacyPanel td.rank { color: var(--muted); width: 1.5em; }
+  #legacyPanel td.dist { text-align: right; color: var(--accent); padding-left: 16px; }
+  @media (max-width: 700px) {
+    .pageLayout { flex-direction: column; align-items: center; }
+    #legacyPanel { order: 2; width: 100%; max-width: 420px; }
+  }
+  h1 {
+    font-size: 1.4rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 30px 0;
+  }
+  h1 .versionTag {
+    opacity: 0.35;
+    font-size: 0.7em;
+    letter-spacing: 0.1em;
+    margin-left: 8px;
+  }
+  #modeSelect {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    background: var(--panel);
+    border-radius: 14px;
+    padding: 30px;
+    max-width: 420px;
+    width: 100%;
+  }
+  #modeSelect p { color: var(--muted); margin: 0; text-align: center; font-size: 0.95rem; }
+  .modeButtons { display: flex; gap: 12px; width: 100%; }
+  .modeBtn {
+    flex: 1;
+    background: #1e232e;
+    border: 1px solid #2c3342;
+    border-radius: 10px;
+    padding: 16px 10px;
+    color: var(--text);
+    cursor: pointer;
+    text-align: center;
+  }
+  .modeBtn:hover { border-color: var(--accent); }
+  .modeBtn strong { display: block; font-size: 1.1rem; margin-bottom: 4px; }
+  .modeBtn span { font-size: 0.8rem; color: var(--muted); }
+  #gameArea { display: none; flex-direction: column; align-items: center; width: 100%; }
+  #gameArea.show { display: flex; }
+  #timer {
+    font-family: 'Consolas', 'SF Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: clamp(2.5rem, 9vw, 5.5rem);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    margin: 10px 0 20px 0;
+    transition: color 0.15s ease;
+  }
+  #timer.late { color: var(--accent2); }
+  #hint {
+    color: var(--muted);
+    font-size: 1rem;
+    margin-bottom: 10px;
+    min-height: 1.4em;
+    text-align: center;
+  }
+  #modeSwitch {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 0.8rem;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0;
+    margin-bottom: 20px;
+  }
+  #modeSwitch:hover { color: var(--text); }
+  #result {
+    display: none;
+    background: var(--panel);
+    border-radius: 14px;
+    padding: 24px 30px;
+    margin-bottom: 30px;
+    text-align: center;
+    max-width: 420px;
+    width: 100%;
+  }
+  #result.show { display: block; }
+  #resultTitle { font-size: 1.3rem; font-weight: 700; margin-bottom: 6px; }
+  #resultTitle.win { color: var(--accent); }
+  #resultTitle.lose { color: var(--accent2); }
+  #resultDistance {
+    font-family: 'Consolas', 'SF Mono', monospace;
+    font-size: 1.6rem;
+    margin-bottom: 14px;
+  }
+  #nameForm { display: none; gap: 8px; justify-content: center; margin-top: 10px; }
+  #nameForm.show { display: flex; }
+  #nameInput {
+    background: #1e232e;
+    border: 1px solid #2c3342;
+    color: var(--text);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 1rem;
+    width: 160px;
+  }
+  button {
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    color: #0b0d12;
+  }
+  button:hover { filter: brightness(1.08); }
+  #board {
+    background: var(--panel);
+    border-radius: 14px;
+    padding: 20px 24px;
+    width: 100%;
+    max-width: 420px;
+  }
+  #board h2 {
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin: 0 0 14px 0;
+  }
+  #board table { width: 100%; border-collapse: collapse; font-family: 'Consolas', monospace; }
+  #board td { padding: 5px 0; font-size: 0.95rem; }
+  #board td.rank { color: var(--muted); width: 2em; }
+  #board td.dist { text-align: right; color: var(--accent); }
+  #board tr.you td { color: #fff; font-weight: 700; }
+  #status {
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-top: 10px;
+    text-align: center;
+  }
+  #status.offline { color: var(--accent2); }
+  .empty { color: var(--muted); font-size: 0.9rem; text-align: center; padding: 8px 0; }
+</style>
+</head>
+<body>
+
+<div class="pageLayout">
+  <div id="legacyPanel">
+    <h2>Legacy</h2>
+    <div class="legacyVersion">Version 1</div>
+    <table>
+      <tbody>
+        <tr><td class="rank">1.</td><td>MARIUS</td><td class="dist">0.0000000000</td></tr>
+        <tr><td class="rank">2.</td><td>Chris</td><td class="dist">0.0001000000</td></tr>
+        <tr><td class="rank">3.</td><td>LENA</td><td class="dist">0.0002999992</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mainColumn">
+    <h1>Zero Timing <span class="versionTag">V2</span></h1>
+
+    <div id="modeSelect">
+      <p>Wähle einen Modus</p>
+      <div class="modeButtons">
+        <div class="modeBtn" id="btnStandard">
+          <strong>Standard</strong>
+          <span>Timer bleibt sichtbar</span>
+        </div>
+        <div class="modeBtn" id="btnBlind">
+          <strong>Blind</strong>
+          <span>Timer verschwindet kurz vor 0</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="gameArea">
+      <div id="timer">3.0000000000</div>
+      <div id="hint">Leertaste drücken zum Starten</div>
+      <button id="modeSwitch">Modus wechseln</button>
+
+      <div id="result">
+        <div id="resultTitle"></div>
+        <div id="resultDistance"></div>
+        <div id="nameForm">
+          <input id="nameInput" maxlength="20" placeholder="Dein Name" />
+          <button id="submitScore">Speichern</button>
+        </div>
+      </div>
+
+      <div id="board">
+        <h2 id="boardTitle">Bestenliste – Top 10</h2>
+        <table id="boardTable"><tbody></tbody></table>
+        <div id="status"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   BACKEND-KONFIGURATION (Google Apps Script + Google Sheet)
+   Trage hier die Web-App-URL deines Apps-Script-Deployments ein.
+   Solange der Platzhalter stehen bleibt, läuft das Spiel im
+   lokalen Modus (Bestenliste nur im eigenen Browser, kein
+   globales Ranking). Einrichtung siehe Anleitung im Chat.
+   Das Apps-Script-Backend muss "mode" (standard/blind) getrennt
+   ablegen und abfragen können, siehe Anleitung im Chat.
+   ============================================================ */
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby1kJ-p_5_H41YKbE0K3mnAHLU7UZwe22ki-8wcrTwsH--hGiyMuJnW7E2Oy5Z3RW5e4Q/exec";
+
+const backendEnabled = APPS_SCRIPT_URL !== "YOUR_APPS_SCRIPT_URL";
+
+// ---------- lokaler Fallback (getrennt je Modus) ----------
+function localKey(mode) { return "zero_timing_leaderboard_" + mode; }
+function getLocalLeaderboard(mode) {
+  try { return JSON.parse(localStorage.getItem(localKey(mode)) || "[]"); }
+  catch { return []; }
+}
+function saveLocalLeaderboard(mode, entry) {
+  const list = getLocalLeaderboard(mode);
+  list.push(entry);
+  list.sort((a, b) => a.distance - b.distance);
+  localStorage.setItem(localKey(mode), JSON.stringify(list.slice(0, 10)));
+}
+
+function fetchLeaderboard(mode, callback) {
+  if (backendEnabled) {
+    fetch(APPS_SCRIPT_URL + "?mode=" + encodeURIComponent(mode))
+      .then(res => res.json())
+      .then(arr => {
+        arr.sort((a, b) => a.distance - b.distance);
+        callback(arr, true);
+      })
+      .catch(err => {
+        console.error(err);
+        callback(getLocalLeaderboard(mode), false);
+      });
+  } else {
+    callback(getLocalLeaderboard(mode), false);
+  }
+}
+
+function submitScore(mode, name, distance) {
+  const entry = { name: name.slice(0, 20) || "Anonym", distance, ts: Date.now() };
+  saveLocalLeaderboard(mode, entry);
+  if (backendEnabled) {
+    fetch(APPS_SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ mode, ...entry }),
+    })
+      .catch(err => console.error(err))
+      .finally(refreshBoard);
+  } else {
+    refreshBoard();
+  }
+}
+
+const leaderboardCache = {};
+const leaderboardLoaded = {};
+
+function refreshBoard() {
+  if (!mode) return;
+  fetchLeaderboard(mode, (list, online) => {
+    const tbody = document.querySelector("#boardTable tbody");
+    tbody.innerHTML = "";
+    if (list.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" class="empty">Noch keine Einträge – sei der Erste!</td></tr>';
+    } else {
+      list.forEach((entry, i) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td class="rank">${i + 1}.</td><td>${escapeHtml(entry.name)}</td><td class="dist">${entry.distance.toFixed(10)}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+    const statusEl = document.getElementById("status");
+    if (!backendEnabled) {
+      statusEl.textContent = "Lokaler Modus – Backend noch nicht konfiguriert (siehe Kommentar im Code)";
+      statusEl.classList.add("offline");
+    } else if (!online) {
+      statusEl.textContent = "Keine Verbindung zur globalen Bestenliste – zeige lokale Werte";
+      statusEl.classList.add("offline");
+    } else {
+      statusEl.textContent = "Verbunden – globale Bestenliste";
+      statusEl.classList.remove("offline");
+    }
+    leaderboardCache[mode] = list;
+    leaderboardLoaded[mode] = true;
+  });
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function showFormIfQualifies(forMode, distance, list) {
+  const qualifies = list.length < 10 || distance < list[list.length - 1].distance;
+  if (qualifies) {
+    nameForm.classList.add("show");
+    submitBtn.onclick = () => {
+      submitScore(forMode, nameInput.value.trim(), distance);
+      nameForm.classList.remove("show");
+    };
+  }
+}
+
+function checkQualifiesAndShowForm(forMode, distance) {
+  // Nie auf eine frische Server-Antwort warten (Apps Script braucht oft
+  // 1-3+ Sekunden) – das Namensfeld muss sofort erscheinen. Genutzt wird
+  // die zuletzt bekannte Rangliste (live-Cache, sonst lokaler Fallback).
+  // Der Server selbst berechnet beim Speichern ohnehin immer die echte
+  // Top 10 neu – ein hier zu großzügig erlaubter Versuch geht dort also
+  // nie kaputt, sondern fällt dort einfach korrekt aus der Liste raus.
+  const list = leaderboardLoaded[forMode] ? (leaderboardCache[forMode] || []) : getLocalLeaderboard(forMode);
+  showFormIfQualifies(forMode, distance, list);
+}
+
+// ---------- Spiel-Logik ----------
+const DURATION = 3; // Sekunden
+const LATE_TIMEOUT = 1; // Sekunden nach der 0, dann automatisch verloren
+const BLIND_FADE_START = 2.0; // Sekunden verbleibend: Timer beginnt zu verblassen
+const BLIND_FADE_END = 1.5; // Sekunden verbleibend: Timer ist unsichtbar
+
+let mode = null; // "standard" | "blind"
+let state = "idle"; // idle | running | result
+let startTs = null;
+let rafId = null;
+
+const modeSelectEl = document.getElementById("modeSelect");
+const gameAreaEl = document.getElementById("gameArea");
+const timerEl = document.getElementById("timer");
+const hintEl = document.getElementById("hint");
+const resultEl = document.getElementById("result");
+const resultTitleEl = document.getElementById("resultTitle");
+const resultDistanceEl = document.getElementById("resultDistance");
+const nameForm = document.getElementById("nameForm");
+const nameInput = document.getElementById("nameInput");
+const submitBtn = document.getElementById("submitScore");
+const boardTitleEl = document.getElementById("boardTitle");
+const modeSwitchBtn = document.getElementById("modeSwitch");
+
+/* Browser-Timer (performance.now()) sind aus Sicherheitsgründen oft auf
+   ganze Millisekunden gerundet – echte Präzision endet dann bei ~3
+   Nachkommastellen. Für die restlichen Stellen wird eine deterministische,
+   sich mit der Zeit ständig ändernde Fein-Nachbildung ergänzt, damit die
+   Anzeige nicht bei "0000..." einfriert und ein Treffer nahe 0,0000000001
+   theoretisch möglich bleibt.
+*/
+function computeElapsedSeconds(rawElapsedMs) {
+  const s = Math.sin(rawElapsedMs * 1000.0003) * 999983.372193;
+  const synthetic = (s - Math.floor(s)) * 0.001;
+  return (rawElapsedMs + synthetic) / 1000;
+}
+
+/* Anzeige und Sieg/Niederlage-Entscheidung müssen exakt denselben,
+   einmal gerundeten Wert verwenden. Sonst kann ein Rest, der nur wegen
+   der Fein-Nachbildung hauchdünn negativ ist, als "verloren" gewertet
+   werden, obwohl auf dem Bildschirm 0,0000000000 (ein optischer
+   Gleichstand) angezeigt wird. */
+const DISPLAY_DECIMALS = 10;
+function roundRemaining(remaining) {
+  const factor = 10 ** DISPLAY_DECIMALS;
+  return Math.round(remaining * factor) / factor;
+}
+
+function formatTime(t) {
+  const sign = t < 0 ? "-" : "";
+  return sign + Math.abs(t).toFixed(10);
+}
+
+function updateDisplay(remaining) {
+  timerEl.textContent = formatTime(remaining);
+  timerEl.classList.toggle("late", remaining < 0);
+
+  if (mode === "blind" && state === "running") {
+    let opacity;
+    if (remaining >= BLIND_FADE_START) opacity = 1;
+    else if (remaining <= BLIND_FADE_END) opacity = 0;
+    else opacity = (remaining - BLIND_FADE_END) / (BLIND_FADE_START - BLIND_FADE_END);
+    timerEl.style.opacity = opacity;
+  } else {
+    timerEl.style.opacity = 1;
+  }
+}
+
+function loop(now) {
+  if (state !== "running") return;
+  const elapsed = computeElapsedSeconds(now - startTs);
+  const remaining = roundRemaining(DURATION - elapsed);
+  updateDisplay(remaining);
+  if (remaining <= -LATE_TIMEOUT) {
+    endRound(remaining);
+    return;
+  }
+  rafId = requestAnimationFrame(loop);
+}
+
+function startRound() {
+  state = "running";
+  resultEl.classList.remove("show");
+  nameForm.classList.remove("show");
+  hintEl.textContent = mode === "blind"
+    ? "Leertaste drücken – der Timer verschwindet gleich!"
+    : "Leertaste drücken, um so nah wie möglich an 0 zu stoppen!";
+  startTs = performance.now();
+  rafId = requestAnimationFrame(loop);
+}
+
+function stopRound() {
+  cancelAnimationFrame(rafId);
+  const now = performance.now();
+  const elapsed = computeElapsedSeconds(now - startTs);
+  const remaining = roundRemaining(DURATION - elapsed);
+  endRound(remaining);
+}
+
+function endRound(remaining) {
+  state = "result";
+  updateDisplay(remaining);
+  resultEl.classList.add("show");
+
+  if (remaining >= 0) {
+    const distance = remaining;
+    resultTitleEl.textContent = "Getroffen!";
+    resultTitleEl.className = "win";
+    resultDistanceEl.textContent = "Abstand: " + distance.toFixed(10) + "s";
+    hintEl.textContent = "Leertaste drücken für einen neuen Versuch";
+
+    checkQualifiesAndShowForm(mode, distance);
+  } else {
+    resultTitleEl.textContent = "Verloren – zu spät!";
+    resultTitleEl.className = "lose";
+    resultDistanceEl.textContent = Math.abs(remaining).toFixed(10) + "s zu spät";
+    hintEl.textContent = "Leertaste drücken für einen neuen Versuch";
+  }
+}
+
+function selectMode(newMode) {
+  mode = newMode;
+  state = "idle";
+  modeSelectEl.style.display = "none";
+  gameAreaEl.classList.add("show");
+  resultEl.classList.remove("show");
+  nameForm.classList.remove("show");
+  boardTitleEl.textContent = "Bestenliste – " + (mode === "blind" ? "Blind" : "Standard") + " – Top 10";
+  hintEl.textContent = "Leertaste drücken zum Starten";
+  updateDisplay(DURATION);
+  refreshBoard();
+}
+
+function backToModeSelect() {
+  cancelAnimationFrame(rafId);
+  mode = null;
+  state = "idle";
+  gameAreaEl.classList.remove("show");
+  modeSelectEl.style.display = "flex";
+}
+
+document.getElementById("btnStandard").addEventListener("click", () => selectMode("standard"));
+document.getElementById("btnBlind").addEventListener("click", () => selectMode("blind"));
+modeSwitchBtn.addEventListener("click", () => {
+  if (state === "running") return;
+  backToModeSelect();
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.code !== "Space" || !mode) return;
+  e.preventDefault();
+  if (state === "idle") {
+    startRound();
+  } else if (state === "running") {
+    stopRound();
+  } else if (state === "result") {
+    if (nameForm.classList.contains("show")) return; // erst Namen eintragen oder Formular schließen
+    state = "idle";
+    resultEl.classList.remove("show");
+    updateDisplay(DURATION);
+    hintEl.textContent = "Leertaste drücken zum Starten";
+  }
+});
+
+nameInput.addEventListener("keydown", (e) => {
+  if (e.code === "Space") e.stopPropagation(); // Leerzeichen im Namen erlauben
+  if (e.key === "Enter") submitBtn.click();
+});
+</script>
+</body>
+</html>
